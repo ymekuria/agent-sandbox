@@ -1,0 +1,53 @@
+#!/usr/bin/env bash
+# agent-sandbox — run coding agents in a Docker Sandbox (microVM),
+# with git-observable output and clone-mode isolation.
+#
+# The agent runs inside a disposable microVM. In clone mode it commits to a
+# private clone; your repo is mounted read-only and you review its work with
+# a normal git fetch / diff / merge.
+
+set -euo pipefail
+
+# ---- constants --------------------------------------------------------------
+
+TOOL_NAME="agent-sandbox"
+TOOL_VERSION="0.1.0"
+
+# ---- output helpers ----------------------------------------------------------
+
+# ---- execution helpers -------------------------------------------------------
+
+# ---- config ------------------------------------------------------------------
+
+# ---- validation helpers ------------------------------------------------------
+
+# ---- sandbox lifecycle -------------------------------------------------------
+
+# ---- commands ----------------------------------------------------------------
+
+cmd_help() {
+  cat <<EOF
+$TOOL_NAME $TOOL_VERSION — run coding agents in a Docker Sandbox microVM
+
+Usage: $TOOL_NAME [options] <command> [args]
+
+Commands:
+  up [-- agent-args]  Create/start sandbox (idempotent)
+  shell               Open bash shell in the running sandbox
+  fetch               git fetch the agent's commits
+  diff  [base]        Fetch + diff base..sandbox branch
+  merge [base]        Fetch + merge sandbox branch into base
+  rm                  Remove the sandbox
+  status              Show sandbox state
+  help                Show this message
+
+Options:
+  --dry-run           Print commands without running them
+  --force, --yes, -y  Skip confirmation prompts
+  --agent <name>      Agent to use (default: claude)
+  --repo <path>       Target repo (default: current directory)
+  --name <name>       Override sandbox name
+EOF
+}
+
+# ---- argument parsing & dispatch ---------------------------------------------
