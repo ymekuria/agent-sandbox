@@ -191,6 +191,55 @@ cleanup_partial_sandbox() {
 
 # ---- commands ----------------------------------------------------------------
 
+cmd_up() {
+  preflight
+  require_repo
+
+  # Idempotent: if running, attach to existing sandbox
+  if sandbox_is_running; then
+    log_info "Sandbox '$NAME' is already running. Attaching..."
+    if [ "$#" -gt 0 ]; then
+      run_sbx run --name "$NAME" "$AGENT" "$@"
+    else
+      run_sbx run --name "$NAME" "$AGENT"
+    fi
+    return 0
+  fi
+
+  # If stopped/exists but not running, remove and recreate
+  if sandbox_exists; then
+    log_warn "Sandbox '$NAME' exists but is not running. Recreating..."
+    run_sbx rm "$NAME"
+  fi
+
+  # Create fresh sandbox
+  if [ "$DRY_RUN" = 1 ]; then
+    log_info "Would start $AGENT in sandbox '$NAME' (clone mode)."
+    trace_cmd sbx create --clone --name "$NAME" "$AGENT" "$REPO_DIR"
+    trace_cmd sbx run --name "$NAME" "$AGENT" "$@"
+    return 0
+  fi
+
+  log_info "Starting $AGENT in sandbox '$NAME' (clone mode)."
+  log_info "Review its commits on your host with: git fetch sandbox-$NAME"
+
+  # Trap-based cleanup: if create succeeds but run fails, remove the partial sandbox
+  _CLEANUP_SBX_NAME="$NAME"
+  trap cleanup_partial_sandbox EXIT
+
+  sbx create --clone --name "$NAME" "$AGENT" "$REPO_DIR"
+
+  if [ "$#" -gt 0 ]; then
+    sbx run --name "$NAME" "$AGENT" "$@"
+  else
+    sbx run --name "$NAME" "$AGENT"
+  fi
+
+  # Success: disarm the trap
+  _CLEANUP_SBX_NAME=""
+  trap - EXIT
+}
+
 cmd_help() {
   cat <<EOF
 $TOOL_NAME $TOOL_VERSION — run coding agents in a Docker Sandbox microVM
