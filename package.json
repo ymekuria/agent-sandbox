@@ -1,0 +1,28 @@
+{
+  "name": "agent-sandbox",
+  "version": "0.1.0",
+  "description": "Run coding agents in isolated Docker Sandbox microVMs and review their work as git commits.",
+  "license": "MIT",
+  "bin": {
+    "agent-sandbox": "./bin/agent-sandbox"
+  },
+  "files": [
+    "bin/agent-sandbox",
+    "conf/sandbox.conf.example",
+    "install.sh",
+    "README.md"
+  ],
+  "keywords": [
+    "ai",
+    "agents",
+    "sandbox",
+    "docker",
+    "claude",
+    "codex",
+    "opencode",
+    "microvm"
+  ],
+  "scripts": {
+    "test": "bash -n bin/agent-sandbox && sh -n install.sh && shellcheck bin/agent-sandbox install.sh"
+  }
+}

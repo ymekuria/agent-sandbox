@@ -1,0 +1,15 @@
+# Copy this file to sandbox.conf (in your repo root) and edit.
+# Every value is optional. sandbox.conf is git-ignored so local settings stay out of the repo.
+
+# Name of the sandbox (default: sbx-<repo-folder-name>)
+# SANDBOX_NAME=sbx-myproject
+
+# Which agent to run (default: claude)
+# Agents supported by Docker Sandboxes: claude, codex, opencode, gemini, copilot, cursor, droid, kiro, shell
+# AGENT=claude
+
+# Repo the agent operates on (default: current directory when running agent-sandbox)
+# REPO_DIR=/absolute/path/to/repo
+
+# Dry-run mode: print commands without executing them (default: 0)
+# DRY_RUN=0

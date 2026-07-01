@@ -1,0 +1,4 @@
+sandbox.conf
+.claude/
+.DS_Store
+*.log
