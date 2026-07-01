@@ -240,6 +240,20 @@ cmd_up() {
   trap - EXIT
 }
 
+cmd_fetch() {
+  preflight
+  require_repo
+  do_fetch
+}
+
+cmd_diff() {
+  preflight
+  require_repo
+  local base="${1:-$(current_branch)}"
+  do_fetch
+  run_cmd git -C "$REPO_DIR" diff "$base..$(sandbox_ref "$base")"
+}
+
 cmd_shell() {
   preflight
   require_running
