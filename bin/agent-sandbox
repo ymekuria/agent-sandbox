@@ -119,6 +119,10 @@ finalize_config() {
   local default_name="sbx-${repo_base//[^a-zA-Z0-9._-]/-}"
   : "${SANDBOX_NAME:=$default_name}"
   NAME="$SANDBOX_NAME"
+
+  : "${GLOBAL_NETWORK_POLICY:=balanced}"
+  DEFAULT_ALLOW="api.anthropic.com,*.anthropic.com,api.openai.com,*.openai.com,github.com,*.github.com,codeload.github.com,objects.githubusercontent.com,registry.npmjs.org,*.npmjs.org"
+  : "${ALLOW:=$DEFAULT_ALLOW}"
 }
 
 # ---- validation helpers ------------------------------------------------------
@@ -207,11 +211,32 @@ agent_hint() {
   esac
 }
 
+init_network_policy() {
+  log_info "Initializing network policy: $GLOBAL_NETWORK_POLICY"
+  if [ "$DRY_RUN" = 1 ]; then
+    trace_cmd sbx policy init "$GLOBAL_NETWORK_POLICY"
+    return 0
+  fi
+  local output
+  if output="$(sbx policy init "$GLOBAL_NETWORK_POLICY" 2>&1)"; then
+    return 0
+  fi
+  case "$output" in
+    *"already"*|*"initialized"*) return 0 ;;
+    *) printf '%s\n' "$output" >&2; log_fatal "Could not initialize network policy." ;;
+  esac
+}
+
+apply_network_allow() {
+  log_info "Restricting network for '$NAME' to allowlist"
+  run_sbx policy allow network --sandbox "$NAME" "$ALLOW"
+}
 # ---- commands ----------------------------------------------------------------
 
 cmd_up() {
   preflight
   require_repo
+  init_network_policy
 
   # Idempotent: if running, attach to existing sandbox
   if sandbox_is_running; then
@@ -500,6 +525,29 @@ AGENTS_EOF
   log_info "Created $agents_file"
 }
 
+cmd_lockdown() {
+  preflight
+  log_info "Setting default network policy to deny-all."
+  run_sbx policy set-default deny-all
+  apply_network_allow
+  if [ "$DRY_RUN" = 1 ]; then
+    log_info "Dry run only. No policy was changed."
+  else
+    log_info "Locked down. '$NAME' may reach only the allowlist."
+  fi
+}
+
+cmd_unlock() {
+  preflight
+  log_info "Resetting network policies to defaults."
+  run_sbx policy reset
+}
+
+cmd_net() {
+  preflight
+  run_sbx policy log
+}
+
 cmd_help() {
   cat <<EOF
 $TOOL_NAME $TOOL_VERSION — run coding agents in a Docker Sandbox microVM
@@ -518,6 +566,9 @@ Commands:
   init                Create starter AGENTS.md in the target repo
   status              Show sandbox state
   doctor              Check system prerequisites
+  lockdown            Set deny-all policy + apply allowlist
+  unlock              Reset network policies to defaults
+  net                 Show sandbox network activity log
   help                Show this message
 
 Options:
@@ -595,6 +646,9 @@ case "${1:-help}" in
   init)     shift; cmd_init ;;
   status)   shift; cmd_status ;;
   doctor)   shift; cmd_doctor ;;
+  lockdown) shift; cmd_lockdown ;;
+  unlock)   shift; cmd_unlock ;;
+  net)      shift; cmd_net ;;
   help|-h|--help) cmd_help ;;
   *)        log_error "Unknown command: $1"; echo; cmd_help; exit 1 ;;
 esac
