@@ -125,6 +125,9 @@ finalize_config() {
   : "${GLOBAL_NETWORK_POLICY:=balanced}"
   DEFAULT_ALLOW="api.anthropic.com,*.anthropic.com,api.openai.com,*.openai.com,github.com,*.github.com,codeload.github.com,objects.githubusercontent.com,registry.npmjs.org,*.npmjs.org"
   : "${ALLOW:=$DEFAULT_ALLOW}"
+  : "${USE_TMUX:=0}"
+  : "${TMUX_ATTACH:=1}"
+  : "${TMUX_SESSION:=agent-sandbox-$NAME}"
 }
 
 # ---- validation helpers ------------------------------------------------------
@@ -164,6 +167,32 @@ confirm() {
 }
 
 # ---- sandbox lifecycle -------------------------------------------------------
+
+quote_env() {
+  printf '%s=%q' "$1" "$2"
+}
+
+quote_words() {
+  local word
+  for word in "$@"; do
+    printf ' %q' "$word"
+  done
+}
+
+tmux_session_exists() {
+  tmux has-session -t "$TMUX_SESSION" 2>/dev/null
+}
+
+kill_tmux_session() {
+  if [ "$DRY_RUN" = 1 ]; then
+    trace_cmd tmux kill-session -t "$TMUX_SESSION"
+    return 0
+  fi
+  command -v tmux >/dev/null 2>&1 || return 0
+  tmux_session_exists || return 0
+  log_info "Removing tmux session '$TMUX_SESSION'."
+  tmux kill-session -t "$TMUX_SESSION"
+}
 
 sandbox_is_running() {
   [ "$DRY_RUN" = 1 ] && return 1
@@ -308,7 +337,55 @@ seed_user_config() {
 
 # ---- commands ----------------------------------------------------------------
 
+cmd_up_tmux() {
+  [ "$DRY_RUN" = 1 ] || require_tool tmux
+  local session="$TMUX_SESSION"
+  local tmux_shell="${SHELL:-/bin/sh}"
+  local script_path
+  script_path="$(cd "$(dirname "$0")" && pwd)/$(basename "$0")"
+
+  # Reconstruct the inner command with all current config forwarded
+  local inner_cmd
+  inner_cmd="$(quote_env AGENT "$AGENT") $(quote_env REPO_DIR "$REPO_DIR") $(quote_env SANDBOX_NAME "$NAME") $(quote_env TMUX_SESSION "$TMUX_SESSION") $(printf '%q' "$script_path") up$(quote_words "$@")"
+
+  if [ "$DRY_RUN" != 1 ] && tmux_session_exists; then
+    log_fatal "tmux session '$session' already exists. Attach with: $TOOL_NAME attach"
+  fi
+
+  log_info "Starting $TOOL_NAME in tmux session '$session'."
+  log_info "Detach without stopping the agent: Ctrl-b, then d"
+  [ "$TMUX_ATTACH" = 1 ] || log_info "Attach later with: $TOOL_NAME attach"
+
+  run_cmd tmux new-session -d -s "$session" -c "$REPO_DIR" "$tmux_shell"
+  run_cmd tmux send-keys -t "$session" "$inner_cmd" C-m
+
+  if [ "$DRY_RUN" != 1 ]; then
+    sleep 1
+    tmux_session_exists || log_fatal "tmux session '$session' exited immediately."
+  fi
+
+  if [ "$TMUX_ATTACH" = 1 ]; then
+    cmd_attach
+  fi
+}
+
+cmd_attach() {
+  [ "$DRY_RUN" = 1 ] || require_tool tmux
+  if [ "$DRY_RUN" != 1 ] && ! tmux_session_exists; then
+    log_fatal "tmux session '$TMUX_SESSION' not found. Start one with: $TOOL_NAME --tmux up"
+  fi
+  if [ -n "${TMUX:-}" ]; then
+    run_cmd tmux switch-client -t "$TMUX_SESSION"
+  else
+    run_cmd tmux attach -t "$TMUX_SESSION"
+  fi
+}
+
 cmd_up() {
+  if [ "$USE_TMUX" = 1 ]; then
+    cmd_up_tmux "$@"
+    return 0
+  fi
   preflight
   require_repo
   init_network_policy
@@ -389,6 +466,7 @@ cmd_rm() {
     esac
   fi
 
+  kill_tmux_session
   sbx rm "$NAME"
   log_info "Removed sandbox '$NAME'."
 }
@@ -639,6 +717,7 @@ Commands:
   review [base]       Fetch + visual difftool review
   merge [base]        Fetch + merge sandbox branch into base
   stop                Stop the sandbox (preserves commits)
+  attach              Attach to the sandbox tmux session
   rm                  Remove the sandbox
   init                Create starter AGENTS.md in the target repo
   status              Show sandbox state
@@ -655,6 +734,8 @@ Options:
   --repo <path>       Target repo (default: current directory)
   --name <name>       Override sandbox name
   --seed-config       Copy user-level agent config into sandbox
+  --tmux              Run 'up' inside a persistent tmux session
+  --tmux-detached     Start tmux session without attaching
   --version, -v       Show version
 
 Config: place a sandbox.conf in your repo root (see conf/sandbox.conf.example).
@@ -694,6 +775,16 @@ while [ "$#" -gt 0 ]; do
       SEED_CONFIG=1
       shift
       ;;
+    --tmux)
+      USE_TMUX=1
+      TMUX_ATTACH=1
+      shift
+      ;;
+    --tmux-detached)
+      USE_TMUX=1
+      TMUX_ATTACH=0
+      shift
+      ;;
     --version|-v)
       printf '%s %s\n' "$TOOL_NAME" "$TOOL_VERSION"
       exit 0
@@ -718,6 +809,7 @@ finalize_config
 # Dispatch subcommand
 case "${1:-help}" in
   up)       shift; cmd_up "$@" ;;
+  attach)   shift; cmd_attach ;;
   shell)    shift; cmd_shell ;;
   fetch)    shift; cmd_fetch ;;
   diff)     shift; cmd_diff "$@" ;;
