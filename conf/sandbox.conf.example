@@ -24,3 +24,10 @@
 
 # Network allowlist for lockdown mode (comma-separated hosts)
 # ALLOW=api.anthropic.com,*.anthropic.com,api.openai.com,*.openai.com,github.com,*.github.com,codeload.github.com,objects.githubusercontent.com,registry.npmjs.org,*.npmjs.org
+
+# Copy user-level agent config (commands, skills, agents) into new sandboxes (default: 0)
+# SEED_CONFIG=0
+
+# Extra paths to copy (comma-separated). Sensitive paths are skipped.
+# Note: Shell variables like $HOME are NOT expanded; use literal absolute paths.
+# SEED_PATHS=/Users/you/.claude/settings.json

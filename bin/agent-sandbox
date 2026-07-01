@@ -112,6 +112,8 @@ finalize_config() {
   : "${DRY_RUN:=0}"
   : "${FORCE:=0}"
   : "${REVIEW_TOOL:=vscode}"
+  : "${SEED_CONFIG:=0}"
+  : "${SEED_PATHS:=}"
 
   # derive sandbox name from repo folder
   local repo_base
@@ -231,6 +233,79 @@ apply_network_allow() {
   log_info "Restricting network for '$NAME' to allowlist"
   run_sbx policy allow network --sandbox "$NAME" "$ALLOW"
 }
+
+seed_path_is_safe() {
+  case "$1" in
+    */auth.json|*/auth.*|*credentials*|*credential*|*token*|*/sessions|*/sessions/*|*/logs|*/logs/*|*/history*|*.log|*/cache|*/cache/*|*/node_modules|*/node_modules/*)
+      return 1 ;;
+    *) return 0 ;;
+  esac
+}
+
+seed_copy() {
+  local src="$1" dest_dir="$2"
+  if ! seed_path_is_safe "$src"; then
+    log_warn "Skipping potentially sensitive path: $src"
+    return 0
+  fi
+  if [ "$DRY_RUN" != 1 ] && [ ! -e "$src" ]; then
+    return 0
+  fi
+  log_info "Seeding: $src -> $NAME:$dest_dir"
+  run_sbx exec "$NAME" mkdir -p "$dest_dir"
+  run_sbx cp "$src" "$NAME:$dest_dir"
+}
+
+seed_user_config() {
+  [ "$SEED_CONFIG" = 1 ] || [ -n "$SEED_PATHS" ] || return 0
+  log_info "Seeding user-level agent config into '$NAME'."
+
+  if [ "$SEED_CONFIG" = 1 ]; then
+    case "$AGENT" in
+      claude)
+        seed_copy "$HOME/.claude/CLAUDE.md" "/home/user/.claude"
+        seed_copy "$HOME/.claude/commands" "/home/user/.claude"
+        seed_copy "$HOME/.claude/agents" "/home/user/.claude"
+        seed_copy "$HOME/.claude/skills" "/home/user/.claude"
+        ;;
+      codex)
+        seed_copy "$HOME/.codex/AGENTS.md" "/home/user/.codex"
+        seed_copy "$HOME/.codex/agents" "/home/user/.codex"
+        seed_copy "$HOME/.codex/prompts" "/home/user/.codex"
+        ;;
+      opencode)
+        seed_copy "$HOME/.config/opencode/AGENTS.md" "/home/user/.config/opencode"
+        seed_copy "$HOME/.config/opencode/opencode.jsonc" "/home/user/.config/opencode"
+        ;;
+      *)
+        log_warn "No default seed paths for agent '$AGENT'. Use SEED_PATHS for explicit paths."
+        ;;
+    esac
+  fi
+
+  # seed extra paths
+  if [ -n "$SEED_PATHS" ]; then
+    local old_ifs="$IFS"
+    IFS=,
+    local paths
+    read -ra paths <<< "$SEED_PATHS"
+    IFS="$old_ifs"
+    for src in "${paths[@]}"; do
+      [ -n "$src" ] || continue
+      case "$src" in
+        "$HOME"/*)
+          local rel="${src#"$HOME"/}"
+          local dest_dir="/home/user/$(dirname "$rel")"
+          seed_copy "$src" "$dest_dir"
+          ;;
+        *)
+          log_warn "Skipping SEED_PATHS entry outside HOME: $src"
+          ;;
+      esac
+    done
+  fi
+}
+
 # ---- commands ----------------------------------------------------------------
 
 cmd_up() {
@@ -260,6 +335,7 @@ cmd_up() {
     log_info "Would start $AGENT in sandbox '$NAME' (clone mode)."
     agent_hint
     trace_cmd sbx create --clone --name "$NAME" "$AGENT" "$REPO_DIR"
+    seed_user_config
     trace_cmd sbx run --name "$NAME" "$AGENT" "$@"
     return 0
   fi
@@ -273,6 +349,7 @@ cmd_up() {
   trap cleanup_partial_sandbox EXIT
 
   sbx create --clone --name "$NAME" "$AGENT" "$REPO_DIR"
+  seed_user_config
 
   if [ "$#" -gt 0 ]; then
     sbx run --name "$NAME" "$AGENT" "$@"
@@ -577,6 +654,7 @@ Options:
   --agent <name>      Agent to use (default: claude)
   --repo <path>       Target repo (default: current directory)
   --name <name>       Override sandbox name
+  --seed-config       Copy user-level agent config into sandbox
   --version, -v       Show version
 
 Config: place a sandbox.conf in your repo root (see conf/sandbox.conf.example).
@@ -611,6 +689,10 @@ while [ "$#" -gt 0 ]; do
       [ -n "${2:-}" ] || log_fatal "--name requires a value"
       SANDBOX_NAME="$2"
       shift 2
+      ;;
+    --seed-config)
+      SEED_CONFIG=1
+      shift
       ;;
     --version|-v)
       printf '%s %s\n' "$TOOL_NAME" "$TOOL_VERSION"
