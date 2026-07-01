@@ -271,6 +271,19 @@ cmd_rm() {
   log_info "Removed sandbox '$NAME'."
 }
 
+cmd_stop() {
+  preflight
+
+  if [ "$DRY_RUN" = 1 ]; then
+    log_info "Would stop sandbox '$NAME'."
+    trace_cmd sbx stop "$NAME"
+    return 0
+  fi
+
+  sbx stop "$NAME"
+  log_info "Stopped '$NAME'. VM and commits are preserved."
+}
+
 cmd_merge() {
   preflight
   require_repo
@@ -332,6 +345,7 @@ Commands:
   fetch               git fetch the agent's commits
   diff  [base]        Fetch + diff base..sandbox branch
   merge [base]        Fetch + merge sandbox branch into base
+  stop                Stop the sandbox (preserves commits)
   rm                  Remove the sandbox
   status              Show sandbox state
   help                Show this message
@@ -405,6 +419,7 @@ case "${1:-help}" in
   fetch)    shift; cmd_fetch ;;
   diff)     shift; cmd_diff "$@" ;;
   merge)    shift; cmd_merge "$@" ;;
+  stop)     shift; cmd_stop ;;
   rm)       shift; cmd_rm ;;
   status)   shift; cmd_status ;;
   help|-h|--help) cmd_help ;;
