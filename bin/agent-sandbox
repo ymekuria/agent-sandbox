@@ -240,6 +240,15 @@ cmd_up() {
   trap - EXIT
 }
 
+cmd_merge() {
+  preflight
+  require_repo
+  local base="${1:-$(current_branch)}"
+  do_fetch
+  log_info "Merging sandbox-$NAME/$base into $base"
+  run_cmd git -C "$REPO_DIR" merge "$(sandbox_ref "$base")"
+}
+
 cmd_fetch() {
   preflight
   require_repo
