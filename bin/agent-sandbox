@@ -320,6 +320,101 @@ cmd_status() {
   fi
 }
 
+cmd_doctor() {
+  local doctor_ok doctor_warn doctor_fail reset
+  doctor_ok="$(_tput_color 2)"    # green
+  doctor_warn="$(_tput_color 3)"  # yellow
+  doctor_fail="$(_tput_color 1)"  # red
+  reset="$(_tput_reset)"
+
+  local fails=0 warns=0
+
+  _doc_ok()   { printf '%s[OK]%s   %s\n' "$doctor_ok"   "$reset" "$*"; }
+  _doc_warn() { printf '%s[WARN]%s %s\n' "$doctor_warn"  "$reset" "$*"; warns=$((warns + 1)); }
+  _doc_fail() { printf '%s[FAIL]%s %s\n' "$doctor_fail"  "$reset" "$*"; fails=$((fails + 1)); }
+
+  printf '%s\n' "agent-sandbox doctor — checking system prerequisites"
+  printf '%s\n' ""
+
+  # 1. sbx
+  if command -v sbx >/dev/null 2>&1; then
+    local sbx_ver
+    sbx_ver="$(sbx --version 2>/dev/null || echo "unknown")"
+    _doc_ok "sbx installed ($sbx_ver)"
+  else
+    _doc_fail "sbx not found — install Docker Sandbox (https://docs.docker.com/sandbox/)"
+  fi
+
+  # 2. git
+  if command -v git >/dev/null 2>&1; then
+    local git_ver
+    git_ver="$(git --version 2>/dev/null || echo "unknown")"
+    _doc_ok "git installed ($git_ver)"
+  else
+    _doc_fail "git not found — install git"
+  fi
+
+  # 3. Platform virtualization
+  local arch os_name
+  os_name="$(uname -s 2>/dev/null || echo "Unknown")"
+  arch="$(uname -m 2>/dev/null || echo "unknown")"
+
+  case "$os_name" in
+    Darwin)
+      if [ "$arch" = "arm64" ]; then
+        _doc_ok "macOS Apple Silicon (arm64) — native virtualization"
+      else
+        local hv_support
+        hv_support="$(sysctl -n kern.hv_support 2>/dev/null || echo "0")"
+        if [ "$hv_support" = "1" ]; then
+          _doc_ok "macOS x86_64 — Hypervisor.framework supported"
+        else
+          _doc_fail "macOS x86_64 — Hypervisor.framework not available"
+        fi
+      fi
+      ;;
+    Linux)
+      if [ -e /dev/kvm ]; then
+        _doc_ok "Linux — /dev/kvm available"
+      elif lsmod 2>/dev/null | grep -q kvm; then
+        _doc_warn "Linux — KVM module loaded but /dev/kvm not accessible (check permissions)"
+      else
+        _doc_fail "Linux — KVM not available (enable hardware virtualization in BIOS)"
+      fi
+      ;;
+    MINGW*|MSYS*|CYGWIN*)
+      _doc_warn "Windows/WSL detected — verify Hyper-V / WSL2 virtualization manually"
+      ;;
+    *)
+      _doc_warn "Unknown platform '$os_name' — cannot verify virtualization support"
+      ;;
+  esac
+
+  # 4. sbx daemon reachable and user logged in
+  if command -v sbx >/dev/null 2>&1; then
+    if sbx ls >/dev/null 2>&1; then
+      _doc_ok "sbx daemon reachable and user logged in"
+    else
+      _doc_fail "sbx daemon not reachable or user not logged in (try 'sbx login')"
+    fi
+  else
+    _doc_fail "sbx not installed — skipping daemon check"
+  fi
+
+  # Summary
+  printf '\n'
+  if [ "$fails" -gt 0 ]; then
+    printf '%sSummary: %d fail(s), %d warning(s)%s\n' "$doctor_fail" "$fails" "$warns" "$reset"
+    return 1
+  elif [ "$warns" -gt 0 ]; then
+    printf '%sSummary: 0 fails, %d warning(s) — review above%s\n' "$doctor_warn" "$warns" "$reset"
+    return 0
+  else
+    printf '%sAll checks passed!%s\n' "$doctor_ok" "$reset"
+    return 0
+  fi
+}
+
 cmd_help() {
   cat <<EOF
 $TOOL_NAME $TOOL_VERSION — run coding agents in a Docker Sandbox microVM
@@ -334,6 +429,7 @@ Commands:
   merge [base]        Fetch + merge sandbox branch into base
   rm                  Remove the sandbox
   status              Show sandbox state
+  doctor              Check system prerequisites
   help                Show this message
 
 Options:
@@ -407,6 +503,7 @@ case "${1:-help}" in
   merge)    shift; cmd_merge "$@" ;;
   rm)       shift; cmd_rm ;;
   status)   shift; cmd_status ;;
+  doctor)   shift; cmd_doctor ;;
   help|-h|--help) cmd_help ;;
   *)        log_error "Unknown command: $1"; echo; cmd_help; exit 1 ;;
 esac
