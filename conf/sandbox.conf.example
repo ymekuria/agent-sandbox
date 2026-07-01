@@ -13,3 +13,7 @@
 
 # Dry-run mode: print commands without executing them (default: 0)
 # DRY_RUN=0
+
+# Difftool for the review command (default: vscode)
+# Supported: vscode, opendiff, vimdiff, or any git-difftool compatible tool
+# REVIEW_TOOL=vscode

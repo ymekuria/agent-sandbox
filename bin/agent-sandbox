@@ -111,6 +111,7 @@ finalize_config() {
   : "${REPO_DIR:=$PWD}"
   : "${DRY_RUN:=0}"
   : "${FORCE:=0}"
+  : "${REVIEW_TOOL:=vscode}"
 
   # derive sandbox name from repo folder
   local repo_base
@@ -447,6 +448,25 @@ cmd_doctor() {
   fi
 }
 
+cmd_review() {
+  preflight
+  require_repo
+  local base="${1:-$(current_branch)}"
+  local tool="${REVIEW_TOOL:-vscode}"
+  do_fetch
+
+  local ref
+  ref="$(sandbox_ref "$base")"
+
+  if [ "$DRY_RUN" != 1 ]; then
+    git -C "$REPO_DIR" rev-parse --verify "$ref" >/dev/null 2>&1 \
+      || log_fatal "Sandbox branch not found: $ref"
+  fi
+
+  log_info "Opening visual review with difftool: $tool"
+  run_cmd git -C "$REPO_DIR" difftool --dir-diff --no-prompt --tool="$tool" "$base" "$ref"
+}
+
 cmd_help() {
   cat <<EOF
 $TOOL_NAME $TOOL_VERSION — run coding agents in a Docker Sandbox microVM
@@ -458,6 +478,7 @@ Commands:
   shell               Open bash shell in the running sandbox
   fetch               git fetch the agent's commits
   diff  [base]        Fetch + diff base..sandbox branch
+  review [base]       Fetch + visual difftool review
   merge [base]        Fetch + merge sandbox branch into base
   stop                Stop the sandbox (preserves commits)
   rm                  Remove the sandbox
@@ -533,6 +554,7 @@ case "${1:-help}" in
   shell)    shift; cmd_shell ;;
   fetch)    shift; cmd_fetch ;;
   diff)     shift; cmd_diff "$@" ;;
+  review)   shift; cmd_review "$@" ;;
   merge)    shift; cmd_merge "$@" ;;
   stop)     shift; cmd_stop ;;
   rm)       shift; cmd_rm ;;
