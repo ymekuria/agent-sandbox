@@ -240,6 +240,32 @@ cmd_up() {
   trap - EXIT
 }
 
+cmd_shell() {
+  preflight
+  require_running
+  run_sbx exec -it "$NAME" bash
+}
+
+cmd_status() {
+  preflight
+  log_info "Sandbox: $NAME"
+  log_info "Agent:   $AGENT"
+  log_info "Repo:    $REPO_DIR"
+
+  if [ "$DRY_RUN" = 1 ]; then
+    trace_cmd sbx exec "$NAME" true
+    return 0
+  fi
+
+  if sandbox_is_running; then
+    printf 'Status: %srunning%s\n' "$(_tput_color 2)" "$(_tput_reset)"
+  elif sandbox_exists; then
+    printf 'Status: %sstopped%s\n' "$(_tput_color 3)" "$(_tput_reset)"
+  else
+    printf 'Status: %snot found%s\n' "$(_tput_color 1)" "$(_tput_reset)"
+  fi
+}
+
 cmd_help() {
   cat <<EOF
 $TOOL_NAME $TOOL_VERSION — run coding agents in a Docker Sandbox microVM
