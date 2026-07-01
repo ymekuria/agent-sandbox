@@ -122,6 +122,40 @@ finalize_config() {
 
 # ---- validation helpers ------------------------------------------------------
 
+require_tool() {
+  command -v "$1" >/dev/null 2>&1 || log_fatal "Required command not found: $1"
+}
+
+require_repo() {
+  git -C "$REPO_DIR" rev-parse --git-dir >/dev/null 2>&1 \
+    || log_fatal "Not a git repository: $REPO_DIR (run 'git init' first)"
+}
+
+require_running() {
+  sandbox_is_running || log_fatal "Sandbox '$NAME' is not running. Start it with: $TOOL_NAME up"
+}
+
+preflight() {
+  [ "$DRY_RUN" = 1 ] && return 0
+  require_tool sbx
+  require_tool git
+}
+
+confirm() {
+  local msg="$1"
+  [ "$FORCE" = 1 ] && return 0
+  if [ ! -t 0 ]; then
+    log_fatal "$msg (use --force to skip confirmation in non-interactive mode)"
+  fi
+  printf '%s [y/N] ' "$msg" >&2
+  local ans
+  read -r ans
+  case "$ans" in
+    y|Y|yes|YES) return 0 ;;
+    *) log_fatal "Aborted." ;;
+  esac
+}
+
 # ---- sandbox lifecycle -------------------------------------------------------
 
 # ---- commands ----------------------------------------------------------------
