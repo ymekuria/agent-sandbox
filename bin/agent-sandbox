@@ -55,6 +55,71 @@ run_sbx() {
 
 # ---- config ------------------------------------------------------------------
 
+# Safe KEY=VALUE parser. Never sources config files.
+load_config() {
+  local file="$1"
+  [ -f "$file" ] || return 0
+  local line_num=0
+  while IFS= read -r line || [ -n "$line" ]; do
+    line_num=$((line_num + 1))
+    # skip blanks and comments
+    case "$line" in
+      ""|\#*) continue ;;
+    esac
+    # must be KEY=VALUE
+    if [[ "$line" != *=* ]]; then
+      log_warn "sandbox.conf:$line_num: ignoring malformed line"
+      continue
+    fi
+    local key="${line%%=*}"
+    local val="${line#*=}"
+    # strip optional quotes from value
+    case "$val" in
+      \"*\") val="${val#\"}"; val="${val%\"}" ;;
+      \'*\') val="${val#\'}"; val="${val%\'}" ;;
+    esac
+    # validate key is a sane identifier
+    if [[ ! "$key" =~ ^[A-Z_][A-Z0-9_]*$ ]]; then
+      log_warn "sandbox.conf:$line_num: ignoring invalid key '$key'"
+      continue
+    fi
+    # environment variables take precedence — only set if not already defined
+    if [ -z "${!key+x}" ]; then
+      export "$key=$val"
+    fi
+  done < "$file"
+}
+
+init_config() {
+  # look for sandbox.conf next to the repo, then next to the script
+  local script_dir
+  script_dir="$(cd "$(dirname "$0")" && pwd)"
+  local conf_locations=(
+    "${REPO_DIR:-.}/sandbox.conf"
+    "$script_dir/../conf/sandbox.conf"
+  )
+  for conf in "${conf_locations[@]}"; do
+    if [ -f "$conf" ]; then
+      load_config "$conf"
+      break
+    fi
+  done
+}
+
+finalize_config() {
+  : "${AGENT:=claude}"
+  : "${REPO_DIR:=$PWD}"
+  : "${DRY_RUN:=0}"
+  : "${FORCE:=0}"
+
+  # derive sandbox name from repo folder
+  local repo_base
+  repo_base="$(basename "$REPO_DIR")"
+  local default_name="sbx-${repo_base//[^a-zA-Z0-9._-]/-}"
+  : "${SANDBOX_NAME:=$default_name}"
+  NAME="$SANDBOX_NAME"
+}
+
 # ---- validation helpers ------------------------------------------------------
 
 # ---- sandbox lifecycle -------------------------------------------------------
