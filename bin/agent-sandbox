@@ -158,6 +158,37 @@ confirm() {
 
 # ---- sandbox lifecycle -------------------------------------------------------
 
+sandbox_is_running() {
+  [ "$DRY_RUN" = 1 ] && return 1
+  sbx exec "$NAME" true >/dev/null 2>&1
+}
+
+sandbox_exists() {
+  [ "$DRY_RUN" = 1 ] && return 1
+  local sbx_list
+  sbx_list="$(sbx ls 2>/dev/null)" || return 1
+  printf '%s\n' "$sbx_list" | grep -qF "$NAME"
+}
+
+current_branch() {
+  git -C "$REPO_DIR" symbolic-ref --short HEAD 2>/dev/null || echo main
+}
+
+sandbox_ref() {
+  printf 'sandbox-%s/%s' "$NAME" "${1:-$(current_branch)}"
+}
+
+do_fetch() {
+  run_cmd git -C "$REPO_DIR" fetch "sandbox-$NAME"
+}
+
+cleanup_partial_sandbox() {
+  [ -n "${_CLEANUP_SBX_NAME:-}" ] || return 0
+  log_warn "Cleaning up partial sandbox '$_CLEANUP_SBX_NAME'..."
+  sbx rm "$_CLEANUP_SBX_NAME" 2>/dev/null || true
+  _CLEANUP_SBX_NAME=""
+}
+
 # ---- commands ----------------------------------------------------------------
 
 cmd_help() {
