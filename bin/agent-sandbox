@@ -342,6 +342,10 @@ Options:
   --agent <name>      Agent to use (default: claude)
   --repo <path>       Target repo (default: current directory)
   --name <name>       Override sandbox name
+  --version, -v       Show version
+
+Config: place a sandbox.conf in your repo root (see conf/sandbox.conf.example).
+Active agent: $AGENT   Sandbox: $NAME
 EOF
 }
 
