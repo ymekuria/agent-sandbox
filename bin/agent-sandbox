@@ -240,6 +240,37 @@ cmd_up() {
   trap - EXIT
 }
 
+cmd_rm() {
+  preflight
+
+  if [ "$DRY_RUN" = 1 ]; then
+    log_info "Would remove sandbox '$NAME'."
+    trace_cmd sbx rm "$NAME"
+    return 0
+  fi
+
+  if ! sandbox_exists && ! sandbox_is_running; then
+    log_info "Sandbox '$NAME' does not exist. Nothing to remove."
+    return 0
+  fi
+
+  confirm "Remove sandbox '$NAME'? Unfetched commits will be lost."
+
+  # Offer to fetch first
+  if [ "$FORCE" != 1 ] && [ -t 0 ]; then
+    printf 'Fetch its commits first? [Y/n] ' >&2
+    local ans
+    read -r ans
+    case "$ans" in
+      n|N|no|NO) ;;
+      *) git -C "$REPO_DIR" fetch "sandbox-$NAME" 2>/dev/null || true ;;
+    esac
+  fi
+
+  sbx rm "$NAME"
+  log_info "Removed sandbox '$NAME'."
+}
+
 cmd_merge() {
   preflight
   require_repo
