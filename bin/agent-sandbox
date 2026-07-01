@@ -346,3 +346,63 @@ EOF
 }
 
 # ---- argument parsing & dispatch ---------------------------------------------
+
+# Parse global options before the subcommand
+while [ "$#" -gt 0 ]; do
+  case "$1" in
+    --dry-run)
+      DRY_RUN=1
+      shift
+      ;;
+    --force|--yes|-y)
+      FORCE=1
+      shift
+      ;;
+    --agent)
+      [ -n "${2:-}" ] || log_fatal "--agent requires a value"
+      AGENT="$2"
+      shift 2
+      ;;
+    --repo)
+      [ -n "${2:-}" ] || log_fatal "--repo requires a value"
+      REPO_DIR="$2"
+      shift 2
+      ;;
+    --name)
+      [ -n "${2:-}" ] || log_fatal "--name requires a value"
+      SANDBOX_NAME="$2"
+      shift 2
+      ;;
+    --version|-v)
+      printf '%s %s\n' "$TOOL_NAME" "$TOOL_VERSION"
+      exit 0
+      ;;
+    --)
+      shift
+      break
+      ;;
+    -*)
+      log_fatal "Unknown option: $1 (see '$TOOL_NAME help')"
+      ;;
+    *)
+      break
+      ;;
+  esac
+done
+
+# Load config and finalize defaults (after CLI overrides are set)
+init_config
+finalize_config
+
+# Dispatch subcommand
+case "${1:-help}" in
+  up)       shift; cmd_up "$@" ;;
+  shell)    shift; cmd_shell ;;
+  fetch)    shift; cmd_fetch ;;
+  diff)     shift; cmd_diff "$@" ;;
+  merge)    shift; cmd_merge "$@" ;;
+  rm)       shift; cmd_rm ;;
+  status)   shift; cmd_status ;;
+  help|-h|--help) cmd_help ;;
+  *)        log_error "Unknown command: $1"; echo; cmd_help; exit 1 ;;
+esac
