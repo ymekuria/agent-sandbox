@@ -35,6 +35,24 @@ log_fatal() { log_error "$*"; exit 1; }
 
 # ---- execution helpers -------------------------------------------------------
 
+trace_cmd() {
+  printf '+' >&2
+  printf ' %q' "$@" >&2
+  printf '\n' >&2
+}
+
+run_cmd() {
+  if [ "${DRY_RUN:-0}" = 1 ]; then
+    trace_cmd "$@"
+  else
+    "$@"
+  fi
+}
+
+run_sbx() {
+  run_cmd sbx "$@"
+}
+
 # ---- config ------------------------------------------------------------------
 
 # ---- validation helpers ------------------------------------------------------
