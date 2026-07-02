@@ -14,6 +14,7 @@
 # Dry-run mode: print commands without executing them (default: 0)
 # DRY_RUN=0
 
-# Difftool for the review command (default: vscode)
-# Supported: vscode, opendiff, vimdiff, or any git-difftool compatible tool
-# REVIEW_TOOL=vscode
+# Difftool for the review command (default: git's configured difftool via `git difftool`)
+# If unset, falls back to whatever `git config diff.tool` returns.
+# Built-in examples: opendiff (macOS FileMerge), vimdiff, meld, kdiff3
+# REVIEW_TOOL=opendiff
