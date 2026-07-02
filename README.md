@@ -1,4 +1,4 @@
-# agent-sandbox
+# agent-sandbox-cli
 
 Run coding agents (Claude Code, Codex, OpenCode, etc.) in isolated Docker Sandbox microVMs.
 Review their work as git commits — fetch, diff, merge — without giving agents direct access to your repo.
@@ -8,22 +8,24 @@ Review their work as git commits — fetch, diff, merge — without giving agent
 ### npm (recommended)
 
 ```bash
-npm install -g agent-sandbox
+npm install -g agent-sandbox-cli
 ```
+
+This installs the `agent-sandbox` command.
 
 ### Shell installer
 
 ```bash
-git clone https://github.com/YOUR_USER/agent-sandbox.git
-cd agent-sandbox
+git clone https://github.com/ymekuria/agent-sandbox-cli.git
+cd agent-sandbox-cli
 ./install.sh
 ```
 
 ### Manual
 
 ```bash
-git clone https://github.com/YOUR_USER/agent-sandbox.git
-ln -s "$PWD/agent-sandbox/bin/agent-sandbox" ~/.local/bin/agent-sandbox
+git clone https://github.com/ymekuria/agent-sandbox-cli.git
+ln -s "$PWD/agent-sandbox-cli/bin/agent-sandbox" ~/.local/bin/agent-sandbox
 ```
 
 ## Quick Start
