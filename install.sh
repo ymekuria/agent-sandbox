@@ -23,6 +23,7 @@ case ":$PATH:" in
   *)
     printf '\n%s is not on your PATH.\n' "$prefix"
     printf 'Add this to your shell profile:\n\n'
+    # shellcheck disable=SC2016
     printf '  export PATH="%s:$PATH"\n' "$prefix"
     ;;
 esac
