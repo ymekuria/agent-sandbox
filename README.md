@@ -11,6 +11,8 @@ Review their work as git commits — fetch, diff, merge — without giving agent
 npm install -g agent-sandbox-cli
 ```
 
+This installs the `agent-sandbox` command.
+
 ### Shell installer
 
 ```bash

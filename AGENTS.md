@@ -1,6 +1,6 @@
 # Agent Instructions — agent-sandbox-cli
 
-This repo contains `agent-sandbox-cli`, a Bash CLI tool that wraps Docker Sandboxes (`sbx`)
+This repo contains `agent-sandbox-cli` (npm package), a Bash CLI tool (`agent-sandbox` command) that wraps Docker Sandboxes (`sbx`)
 for running coding agents in isolated microVMs.
 
 ## Working Rules
