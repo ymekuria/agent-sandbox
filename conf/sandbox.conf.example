@@ -18,3 +18,9 @@
 # If unset, falls back to whatever `git config diff.tool` returns.
 # Built-in examples: opendiff (macOS FileMerge), vimdiff, meld, kdiff3
 # REVIEW_TOOL=opendiff
+
+# Global network policy: allow-all, balanced, deny-all (default: balanced)
+# GLOBAL_NETWORK_POLICY=balanced
+
+# Network allowlist for lockdown mode (comma-separated hosts)
+# ALLOW=api.anthropic.com,*.anthropic.com,api.openai.com,*.openai.com,github.com,*.github.com,codeload.github.com,objects.githubusercontent.com,registry.npmjs.org,*.npmjs.org
