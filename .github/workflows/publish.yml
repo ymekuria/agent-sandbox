@@ -1,7 +1,4 @@
 name: Publish to npm
-permissions:
-  id-token: write
-  contents: read
 on:
   push:
     branches: [main]
@@ -15,11 +12,14 @@ jobs:
         run: bash -n bin/agent-sandbox && sh -n install.sh
       - name: Shellcheck
         run: |
-          sudo apt-get install -y shellcheck
+          sudo apt-get update && sudo apt-get install -y shellcheck
           shellcheck bin/agent-sandbox install.sh
   publish:
     needs: test
     runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4

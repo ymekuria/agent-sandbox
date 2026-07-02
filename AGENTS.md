@@ -28,6 +28,21 @@ shellcheck bin/agent-sandbox || true
 ./bin/agent-sandbox --dry-run rm
 ```
 
+## Pull Request Workflow
+
+When creating a PR, request a Copilot code review:
+
+```bash
+gh pr edit <PR_NUMBER> --add-reviewer @copilot
+```
+
+Check for review comments:
+
+```bash
+gh api repos/ymekuria/agent-sandbox/pulls/<PR_NUMBER>/reviews
+gh api repos/ymekuria/agent-sandbox/pulls/<PR_NUMBER>/comments
+```
+
 ## Sandbox Workflow
 
 When working inside a sandbox created by this tool, commit your work so the host
