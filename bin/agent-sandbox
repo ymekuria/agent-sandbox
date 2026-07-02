@@ -189,6 +189,23 @@ cleanup_partial_sandbox() {
   _CLEANUP_SBX_NAME=""
 }
 
+agent_hint() {
+  case "$AGENT" in
+    claude)
+      log_info "Auth: interactive /login in the sandbox, or: sbx secret set -g anthropic"
+      ;;
+    codex)
+      log_info "Auth: run 'sbx secret set -g openai --oauth' or 'sbx secret set -g openai'"
+      ;;
+    opencode)
+      log_info "Auth: store provider keys with sbx secret, e.g. openai, anthropic, google"
+      ;;
+    gemini)
+      log_info "Auth: run 'sbx secret set -g google' to store your API key"
+      ;;
+  esac
+}
+
 # ---- commands ----------------------------------------------------------------
 
 cmd_up() {
@@ -215,6 +232,7 @@ cmd_up() {
   # Create fresh sandbox
   if [ "$DRY_RUN" = 1 ]; then
     log_info "Would start $AGENT in sandbox '$NAME' (clone mode)."
+    agent_hint
     trace_cmd sbx create --clone --name "$NAME" "$AGENT" "$REPO_DIR"
     trace_cmd sbx run --name "$NAME" "$AGENT" "$@"
     return 0
@@ -222,6 +240,7 @@ cmd_up() {
 
   log_info "Starting $AGENT in sandbox '$NAME' (clone mode)."
   log_info "Review its commits on your host with: git fetch sandbox-$NAME"
+  agent_hint
 
   # Trap-based cleanup: if create succeeds but run fails, remove the partial sandbox
   _CLEANUP_SBX_NAME="$NAME"
