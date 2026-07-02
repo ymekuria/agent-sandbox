@@ -31,3 +31,6 @@
 # Extra paths to copy (comma-separated). Sensitive paths are skipped.
 # Note: Shell variables like $HOME are NOT expanded; use literal absolute paths.
 # SEED_PATHS=/Users/you/.claude/settings.json
+
+# tmux session name (default: agent-sandbox-<sandbox-name>)
+# TMUX_SESSION=agent-sandbox-sbx-myproject
