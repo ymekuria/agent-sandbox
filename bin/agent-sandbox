@@ -467,6 +467,39 @@ cmd_review() {
   run_cmd git -C "$REPO_DIR" difftool --dir-diff --no-prompt --tool="$tool" "$base" "$ref"
 }
 
+cmd_init() {
+  local agents_file="$REPO_DIR/AGENTS.md"
+
+  if [ "$DRY_RUN" = 1 ]; then
+    log_info "Would create $agents_file"
+    return 0
+  fi
+
+  [ -e "$agents_file" ] && log_fatal "AGENTS.md already exists in $REPO_DIR"
+
+  cat >"$agents_file" <<'AGENTS_EOF'
+# Agent Instructions
+
+This repository may be worked on by sandboxed coding agents.
+
+## Working Rules
+
+- Inspect the repo before editing. Follow existing structure, style, and tooling.
+- Keep changes small, reviewable, and focused on the requested task.
+- Do not add dependencies, push to remotes, publish releases, or touch credentials unless explicitly asked.
+- Prefer fixing root causes over broad rewrites.
+- Commit finished work inside the sandbox so the host can fetch, diff, and merge it.
+
+## Verification
+
+- Run the most relevant tests, linters, formatters, or build checks for the change.
+- If a check cannot be run, explain why in the final response.
+- Report changed files and any known risks before stopping.
+AGENTS_EOF
+
+  log_info "Created $agents_file"
+}
+
 cmd_help() {
   cat <<EOF
 $TOOL_NAME $TOOL_VERSION — run coding agents in a Docker Sandbox microVM
@@ -482,6 +515,7 @@ Commands:
   merge [base]        Fetch + merge sandbox branch into base
   stop                Stop the sandbox (preserves commits)
   rm                  Remove the sandbox
+  init                Create starter AGENTS.md in the target repo
   status              Show sandbox state
   doctor              Check system prerequisites
   help                Show this message
@@ -558,6 +592,7 @@ case "${1:-help}" in
   merge)    shift; cmd_merge "$@" ;;
   stop)     shift; cmd_stop ;;
   rm)       shift; cmd_rm ;;
+  init)     shift; cmd_init ;;
   status)   shift; cmd_status ;;
   doctor)   shift; cmd_doctor ;;
   help|-h|--help) cmd_help ;;
