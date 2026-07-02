@@ -22,6 +22,18 @@
     "opencode",
     "microvm"
   ],
+  "author": "Yoni Mekuria",
+  "engines": {
+    "node": ">=18"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ymekuria/agent-sandbox.git"
+  },
+  "homepage": "https://github.com/ymekuria/agent-sandbox#readme",
+  "bugs": {
+    "url": "https://github.com/ymekuria/agent-sandbox/issues"
+  },
   "scripts": {
     "test": "bash -n bin/agent-sandbox && sh -n install.sh && shellcheck bin/agent-sandbox install.sh"
   }
